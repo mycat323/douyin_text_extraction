@@ -25,6 +25,7 @@ class OutputFormat(str, Enum):
     md = "md"
     txt = "txt"
     json = "json"
+    srt = "srt"
 
 
 class ASRProvider(str, Enum):
@@ -72,7 +73,13 @@ def extract(
 
     formatter = OutputFormatter()
     metadata = result.metadata
-    if format_type == OutputFormat.json:
+    if format_type == OutputFormat.srt:
+        # 字幕只能由带时间戳的云端结果生成，本地引擎不提供时间戳。
+        if not result.srt:
+            console.print("当前转写结果不含时间戳，无法生成 SRT 字幕（请使用 DashScope 云端识别）。", style="red", markup=False)
+            raise typer.Exit(code=1)
+        content = result.srt
+    elif format_type == OutputFormat.json:
         content = json.dumps(result.to_dict(), ensure_ascii=False, indent=2)
     elif format_type == OutputFormat.md:
         content = formatter.format_markdown(

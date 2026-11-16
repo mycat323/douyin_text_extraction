@@ -449,6 +449,11 @@ body {
     cursor: not-allowed;
 }
 
+/* .btn 显式设置了 display，需要让 hidden 属性重新生效（UA 样式优先级较低） */
+.btn[hidden] {
+    display: none;
+}
+
 .btn-primary {
     background: var(--accent);
     color: #fff;

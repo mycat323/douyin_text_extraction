@@ -1,5 +1,11 @@
 # 更新日志
 
+## 未发布
+
+- 新增 SRT 字幕导出：DashScope 云端识别返回的句子级时间戳会被保留并转为 SubRip 字幕。Web 页面在结果区提供「下载 .srt」按钮（仅在存在时间戳时显示），CLI 新增 `--format srt`，API 响应新增 `srt` 与 `srt_available` 字段。字幕按词边界拆分过长的句子，保证时间单调递增，文件以 UTF-8 BOM 写出以兼容常见播放器；本地 Whisper / SenseVoice 不提供时间戳，此时不显示字幕下载。
+- 新增 `DASHSCOPE_BASE_URL` 配置，支持私有化部署或代理访问 DashScope 原生 API；留空使用 SDK 默认地址。
+- 修复 Web 配置页在 Windows 上保存配置总是失败的问题（只读句柄 `fsync` 触发 `EBADF`）。
+
 ## 1.0.0 — 2026-10-16
 
 首个正式版本，Git 标签为 `v1.0`。

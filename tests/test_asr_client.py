@@ -202,3 +202,45 @@ def test_custom_base_url_overrides_sdk_default(monkeypatch):
     assert client.base_http_api_url == "https://proxy.example/api/v1"
     assert sys.modules["dashscope"].base_http_api_url == "https://proxy.example/api/v1"
     assert client._task_url("task-1") == "https://proxy.example/api/v1/tasks/task-1"
+
+
+def test_sentences_are_captured_for_subtitles(monkeypatch):
+    transcription = SimpleNamespace(
+        async_call=Mock(return_value=_response(200, SimpleNamespace(task_id="task-1"))),
+    )
+    _install_dashscope(monkeypatch, transcription)
+    payloads = [
+        {"output": {"task_status": "SUCCEEDED", "results": [{"transcription_url": "https://result.example/r.json"}]}},
+        {"transcripts": [{
+            "text": "你好世界",
+            "sentences": [{"begin_time": 0, "end_time": 1500, "text": "你好世界"}],
+        }]},
+    ]
+    monkeypatch.setattr(
+        "src.asr_client.request.urlopen",
+        Mock(side_effect=[io.BytesIO(json.dumps(payload).encode()) for payload in payloads]),
+    )
+    client = ASRClient("k", request_timeout=7, asr_timeout=20)
+
+    assert client.transcribe(video_url="https://cdn.example/video") == "你好世界"
+    assert client.last_sentences == [{"begin_time": 0, "end_time": 1500, "text": "你好世界"}]
+
+
+def test_sentences_reset_when_transcript_has_no_timestamps(monkeypatch):
+    transcription = SimpleNamespace(
+        async_call=Mock(return_value=_response(200, SimpleNamespace(task_id="task-1"))),
+    )
+    _install_dashscope(monkeypatch, transcription)
+    payloads = [
+        {"output": {"task_status": "SUCCEEDED", "results": [{"transcription_url": "https://result.example/r.json"}]}},
+        {"transcripts": [{"text": "无时间戳"}]},
+    ]
+    monkeypatch.setattr(
+        "src.asr_client.request.urlopen",
+        Mock(side_effect=[io.BytesIO(json.dumps(payload).encode()) for payload in payloads]),
+    )
+    client = ASRClient("k", request_timeout=7, asr_timeout=20)
+    client.last_sentences = [{"stale": True}]
+
+    assert client.transcribe(video_url="https://cdn.example/video") == "无时间戳"
+    assert client.last_sentences is None

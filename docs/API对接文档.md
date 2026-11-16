@@ -41,7 +41,7 @@ curl --fail-with-body \
   http://127.0.0.1:5000/api/extract
 ```
 
-成功时返回 `success`、`metadata` 和 `text`。`metadata` 包含 `video_id`、`title`、`author`、`duration`、`video_url`、`cover_url` 和 `douyin_url`；其中媒体 URL 来自抖音页面，可能随平台变化。下载媒体时，初始 URL 和每一跳重定向都必须属于 `src/media_url.py` 列出的平台或 CDN 域名。这是域名校验，不是 DNS/IP 隔离。
+成功时返回 `success`、`metadata`、`text`，以及字幕相关字段 `srt` 和 `srt_available`。`srt` 为 SubRip 字幕文本（`null` 表示不可用），仅在 DashScope 云端识别返回句子级时间戳时才有值；本地 Whisper / SenseVoice 引擎不提供时间戳，此时 `srt_available` 为 `false`。`metadata` 包含 `video_id`、`title`、`author`、`duration`、`video_url`、`cover_url` 和 `douyin_url`；其中媒体 URL 来自抖音页面，可能随平台变化。下载媒体时，初始 URL 和每一跳重定向都必须属于 `src/media_url.py` 列出的平台或 CDN 域名。这是域名校验，不是 DNS/IP 隔离。
 
 ```json
 {
@@ -55,7 +55,9 @@ curl --fail-with-body \
     "cover_url": "https://example.invalid/cover.jpg",
     "douyin_url": "https://www.douyin.com/video/示例视频ID"
   },
-  "text": "转写得到的文本"
+  "text": "转写得到的文本",
+  "srt": "1\n00:00:00,000 --> 00:00:05,358\n第一句字幕\n\n2\n00:00:05,358 --> 00:00:09,274\n第二句字幕\n",
+  "srt_available": true
 }
 ```
 

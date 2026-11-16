@@ -34,6 +34,7 @@
                 <div class="transcript-actions">
                     <button type="button" class="btn btn-secondary btn-compact" id="copyTextBtn" disabled>复制文本</button>
                     <button type="button" class="btn btn-secondary btn-compact" id="downloadTextBtn" disabled>下载 .txt</button>
+                    <button type="button" class="btn btn-secondary btn-compact" id="downloadSrtBtn" disabled hidden title="带时间戳的字幕文件">下载 .srt</button>
                 </div>
                 <span id="transcriptStatus" class="copy-status" role="status" aria-live="polite"></span>
             </div>
@@ -69,9 +70,12 @@ function formatDuration(seconds) {
 }
 
 let transcriptFilename = 'douyin_transcript.txt';
+let subtitleFilename = 'douyin_transcript.srt';
+let subtitleText = '';
 const transcriptStatus = document.getElementById('transcriptStatus');
 const copyTextButton = document.getElementById('copyTextBtn');
 const downloadTextButton = document.getElementById('downloadTextBtn');
+const downloadSrtButton = document.getElementById('downloadSrtBtn');
 
 function displayResult(data) {
     const metadata = data.metadata || {};
@@ -94,10 +98,33 @@ function displayResult(data) {
     document.getElementById('textCount').textContent = `${Array.from(text.replace(/\s/g, '')).length.toLocaleString()} 字 · 自动转写，请核对原视频`;
     const videoId = String(metadata.video_id || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 100);
     transcriptFilename = videoId ? `douyin_${videoId}.txt` : 'douyin_transcript.txt';
+    subtitleFilename = videoId ? `douyin_${videoId}.srt` : 'douyin_transcript.srt';
+    subtitleText = typeof data.srt === 'string' ? data.srt : '';
+    const hasSrt = Boolean(data.srt_available && subtitleText.trim());
+    downloadSrtButton.hidden = !hasSrt;
+    downloadSrtButton.disabled = !hasSrt;
     document.getElementById('resultArea').style.display = 'flex';
     const behavior = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
     document.getElementById('resultArea').scrollIntoView({ behavior, block: 'start' });
 }
+
+downloadSrtButton.addEventListener('click', function () {
+    if (!subtitleText) {
+        transcriptStatus.textContent = '当前结果不含时间戳，无法生成字幕文件。';
+        return;
+    }
+    // SRT 播放器普遍识别 UTF-8 BOM，显式添加以兼容常见客户端。
+    const file = new Blob(['\ufeff', subtitleText], { type: 'application/x-subrip;charset=utf-8' });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = subtitleFilename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    transcriptStatus.textContent = '已开始下载 SRT 字幕文件。';
+});
 
 copyTextButton.addEventListener('click', async function () {
     const text = document.getElementById('textContent').textContent;

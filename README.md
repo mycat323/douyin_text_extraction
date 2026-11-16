@@ -11,7 +11,7 @@
 ## 能做什么
 
 - 解析抖音短链接、视频链接、精选页链接和完整分享文本。
-- 在 Web 页面提取、阅读、复制转写结果，或下载为 `.txt`；适配手机屏幕。
+- 在 Web 页面提取、阅读、复制转写结果，或下载为 `.txt`；使用 DashScope 云端识别时还可下载带时间戳的 `.srt` 字幕；适配手机屏幕。
 - 通过 CLI 输出 Markdown、TXT、JSON，支持指定保存路径。
 - 在配置页选择识别方式与本地模型；密钥留空保留已有值。
 - 可选使用 OSS 作为 DashScope 直接识别失败后的备用流程。
@@ -119,9 +119,12 @@ uv run douyin-web
 # Markdown（默认），保存到 output/douyin_<视频ID>.md
 uv run --extra local-chinese douyin-extract extract "抖音链接或分享文本"
 
-# TXT / JSON
+# TXT / JSON / SRT
 uv run --extra local-chinese douyin-extract extract "抖音链接" --format txt
 uv run --extra local-chinese douyin-extract extract "抖音链接" --format json
+
+# SRT 字幕（仅 DashScope 云端识别提供时间戳；文件带 UTF-8 BOM 以兼容播放器）
+uv run douyin-extract extract "抖音链接" --format srt
 
 # 指定输出路径
 uv run --extra local-chinese douyin-extract extract "抖音链接" --format json --output reports/result.json

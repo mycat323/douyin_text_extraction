@@ -202,3 +202,37 @@ def test_same_video_concurrently_uses_independent_workspaces(configured, depende
     assert all(result.text == "文本" for result in results)
     assert paths[0].parent != paths[1].parent
     assert not list(configured.temp_dir.iterdir())
+
+
+def test_cloud_result_carries_srt_from_sentence_timestamps(configured, dependencies):
+    _, _, cloud, _, _, _ = dependencies
+    cloud.transcribe_with_fallback.return_value = " 转写文本 \n"
+    cloud.last_sentences = [
+        {"begin_time": 0, "end_time": 1500, "text": "第一句"},
+        {"begin_time": 1500, "end_time": 3000, "text": "第二句"},
+    ]
+    result = ExtractionService(configured).extract("https://www.douyin.com/video/7445285776618482979")
+    assert result.srt == (
+        "1\n00:00:00,000 --> 00:00:01,500\n第一句\n\n"
+        "2\n00:00:01,500 --> 00:00:03,000\n第二句\n"
+    )
+    payload = result.to_dict()
+    assert payload["srt_available"] is True
+    assert payload["srt"] == result.srt
+
+
+def test_cloud_result_without_timestamps_reports_srt_unavailable(configured, dependencies):
+    _, _, cloud, _, _, _ = dependencies
+    cloud.last_sentences = None
+    result = ExtractionService(configured).extract("https://www.douyin.com/video/7445285776618482979")
+    assert result.srt is None
+    assert result.to_dict()["srt_available"] is False
+
+
+def test_srt_failure_never_breaks_transcription(configured, dependencies, monkeypatch):
+    _, _, cloud, _, _, _ = dependencies
+    cloud.last_sentences = [{"begin_time": 0, "end_time": 1000, "text": "文本"}]
+    monkeypatch.setattr(service, "to_srt", Mock(side_effect=RuntimeError("boom")))
+    result = ExtractionService(configured).extract("https://www.douyin.com/video/7445285776618482979")
+    assert result.text == "转写文本"
+    assert result.srt is None

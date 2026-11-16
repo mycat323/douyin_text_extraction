@@ -114,7 +114,7 @@ class OutputFormatter:
             content: 要保存的内容
             output_dir: 输出目录
             filename: 文件名（不含扩展名），如果为 None 则使用时间戳
-            format_type: 文件格式（md/txt）
+            format_type: 文件格式（md/txt/json/srt）
             
         Returns:
             保存的文件路径，失败返回 None
@@ -131,7 +131,9 @@ class OutputFormatter:
             file_path = output_dir / f"{filename}.{format_type}"
             
             # 写入文件
-            file_path.write_text(content, encoding='utf-8')
+            # SRT 播放器多在 Windows 下探测编码，加 BOM 才能稳定识别中文。
+            encoding = "utf-8-sig" if format_type == "srt" else "utf-8"
+            file_path.write_text(content, encoding=encoding)
             
             console.print(f"[green]✅ 结果已保存到: {file_path}[/green]")
             return file_path

@@ -34,6 +34,8 @@ class ASRClient:
         self.model = model
         self.request_timeout = request_timeout
         self.asr_timeout = asr_timeout
+        # 最近一次成功转写的句子级时间戳（供 SRT 字幕使用）；失败或未返回时为 None。
+        self.last_sentences = None
         try:
             import dashscope
             from http import HTTPStatus
@@ -66,6 +68,7 @@ class ASRClient:
     ) -> Optional[str]:
         """Transcribe a remote HTTP(S) URL; local files require OSS upload first."""
         console.print("[cyan]🎤 开始语音识别...[/cyan]")
+        self.last_sentences = None
         if not video_url and not audio_path:
             console.print("[red]❌ 必须提供 video_url 或 audio_path[/red]")
             return None
@@ -151,9 +154,12 @@ class ASRClient:
             if not transcripts:
                 console.print("[yellow]⚠ 未检测到语音内容[/yellow]")
                 return "（音频中未检测到语音内容）"
-            text = transcripts[0].get("text", "")
+            first_transcript = transcripts[0] if isinstance(transcripts[0], dict) else {}
+            text = first_transcript.get("text", "")
             if not isinstance(text, str):
                 return None
+            sentences = first_transcript.get("sentences")
+            self.last_sentences = sentences if isinstance(sentences, list) else None
             text = text.strip()
             console.print(f"[green]✅ 语音识别完成（{len(text)} 字）[/green]")
             return text
@@ -162,7 +168,11 @@ class ASRClient:
             return None
 
     def transcribe_with_fallback(self, video_url: str, video_id: str, settings) -> Optional[str]:
-        """Use direct cloud transcription, then an isolated OSS/FFmpeg fallback."""
+        """Use direct cloud transcription, then an isolated OSS/FFmpeg fallback.
+
+        成功后 ``self.last_sentences`` 保留带时间戳的句子，可用于生成 SRT 字幕。
+        """
+        self.last_sentences = None
         console.print("[cyan]🎯 方案1：直接视频 URL 转写[/cyan]")
         text = self.transcribe(video_url=video_url)
         if text:
@@ -230,6 +240,7 @@ class ASRClient:
                     console.print(f"[yellow]⚠ 删除临时目录失败: {exc}[/yellow]")
 
     def transcribe_with_timestamp(self, audio_path: Path) -> Optional[list]:
-        """Timestamp support is not implemented."""
-        console.print("[yellow]⚠ 带时间戳的转写功能尚未实现[/yellow]")
-        return None
+        """返回最近一次云端转写的句子级时间戳；本地音频路径不支持。"""
+        if audio_path:
+            console.print("[yellow]⚠ 云端 ASR 不支持本地音频路径，请使用 transcribe(video_url=...)[/yellow]")
+        return self.last_sentences

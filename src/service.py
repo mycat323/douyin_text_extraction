@@ -12,6 +12,7 @@ from src.fetcher import DouyinFetcher, VideoMetadata
 from src.local_asr_client import LocalASRClient
 from src.parser import DouyinLinkParser
 from src.sensevoice_client import SenseVoiceClient
+from src.subtitle import to_srt
 
 
 class ExtractionError(Exception):
@@ -26,11 +27,19 @@ class ExtractionError(Exception):
 class ExtractionResult:
     metadata: VideoMetadata
     text: str
+    # 带时间戳的字幕文本（SRT）；云端未返回句子时间戳时为 None。
+    srt: str | None = None
 
     def to_dict(self) -> dict:
         metadata = self.metadata.model_dump()
         metadata["douyin_url"] = f"https://www.douyin.com/video/{self.metadata.video_id}"
-        return {"success": True, "metadata": metadata, "text": self.text}
+        return {
+            "success": True,
+            "metadata": metadata,
+            "text": self.text,
+            "srt": self.srt,
+            "srt_available": bool(self.srt),
+        }
 
 
 class ExtractionService:
@@ -96,6 +105,7 @@ class ExtractionService:
                 f"视频时长（{metadata.duration}秒）超过限制（{self.settings.max_video_duration}秒）"
             )
 
+        srt = None
         if self.settings.asr_provider == ASR_PROVIDER_DASHSCOPE:
             client_kwargs = {}
             # 仅当用户显式配置了自定义地址时才覆盖 SDK 默认的 DashScope 地址。
@@ -113,12 +123,19 @@ class ExtractionService:
                 video_id=video_id,
                 settings=self.settings,
             )
+            if text:
+                # 字幕生成失败不能影响转写结果，由界面按 srt_available 隐藏下载按钮。
+                try:
+                    srt = to_srt(client.last_sentences)
+                except Exception:
+                    logging.getLogger(__name__).warning("SRT 字幕生成失败，已跳过")
+                    srt = None
         else:
             text = self._transcribe_local(metadata, processor, local_asr)
 
         if not text or not text.strip():
             raise ExtractionError("语音识别未返回文本，请检查音轨、服务配置及服务端日志", 502)
-        return ExtractionResult(metadata, text.strip())
+        return ExtractionResult(metadata, text.strip(), srt)
 
     def _transcribe_local(self, metadata, processor, local_asr):
         self.settings.temp_dir.mkdir(parents=True, exist_ok=True)

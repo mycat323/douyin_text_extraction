@@ -114,3 +114,28 @@ def test_version():
     response = runner.invoke(main.app, ["version"])
     assert response.exit_code == 0
     assert "1.0.0" in response.stdout
+
+
+def _with_srt(cli, srt):
+    """Return a result carrying the given SRT payload (ExtractionResult is frozen)."""
+    settings, extractor, _, result = cli
+    extractor.extract.return_value = ExtractionResult(result.metadata, result.text, srt)
+    return extractor
+
+
+def test_srt_format_writes_bom_file(cli, tmp_path):
+    body = "\n".join(["1", "00:00:00,000 --> 00:00:01,000", "你好", ""])
+    _with_srt(cli, body)
+    output = tmp_path / "sub.srt"
+    response = runner.invoke(main.app, ["extract", "a link", "--format", "srt", "--output", str(output)])
+    assert response.exit_code == 0, response.output
+    raw = output.read_bytes()
+    assert raw.startswith(bytes([0xEF, 0xBB, 0xBF])), "SRT should start with a UTF-8 BOM"
+    assert "00:00:00,000 --> 00:00:01,000" in raw.decode("utf-8-sig")
+
+
+def test_srt_format_fails_clearly_without_timestamps(cli):
+    _with_srt(cli, None)
+    response = runner.invoke(main.app, ["extract", "a link", "--format", "srt", "--no-save"])
+    assert response.exit_code == 1
+    assert "无法生成 SRT" in response.output
