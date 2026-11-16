@@ -97,11 +97,16 @@ class ExtractionService:
             )
 
         if self.settings.asr_provider == ASR_PROVIDER_DASHSCOPE:
+            client_kwargs = {}
+            # 仅当用户显式配置了自定义地址时才覆盖 SDK 默认的 DashScope 地址。
+            if self.settings.dashscope_base_url:
+                client_kwargs["base_url"] = self.settings.dashscope_base_url
             client = ASRClient(
                 self.settings.dashscope_api_key,
                 self.settings.asr_model,
                 request_timeout=self.settings.request_timeout,
                 asr_timeout=self.settings.asr_timeout,
+                **client_kwargs,
             )
             text = client.transcribe_with_fallback(
                 video_url=metadata.video_url,

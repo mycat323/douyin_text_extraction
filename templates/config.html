@@ -29,6 +29,11 @@
                         <small id="dashscopeKeyHint" class="form-hint">留空会保留已保存的密钥。<span id="dashscopeKeyStatus">尚未读取配置</span>。<a href="https://dashscope.console.aliyun.com/apiKey" target="_blank" rel="noopener noreferrer">获取 API Key</a></small>
                     </div>
                     <div class="form-group">
+                        <label for="DASHSCOPE_BASE_URL">DashScope 接口地址</label>
+                        <input type="text" id="DASHSCOPE_BASE_URL" name="DASHSCOPE_BASE_URL" autocomplete="off" spellcheck="false" aria-describedby="dashscopeBaseUrlHint">
+                        <small id="dashscopeBaseUrlHint" class="form-hint">留空使用官方默认地址。私有化部署或代理时填写形如 <code>https://your-endpoint/api/v1</code> 的地址（需为 DashScope 原生 API 路径，不要用 compatible-mode）。</small>
+                    </div>
+                    <div class="form-group">
                         <label for="ASR_MODEL">ASR 模型</label>
                         <select id="ASR_MODEL" name="ASR_MODEL" aria-describedby="modelHint">
                             <option value="paraformer-v2">paraformer-v2（文件识别）</option>
@@ -137,7 +142,7 @@
 {% block scripts %}
 <script>
 const configFields = [
-    'ASR_PROVIDER', 'DASHSCOPE_API_KEY', 'ASR_MODEL', 'LOCAL_ASR_ENGINE', 'WHISPER_MODEL', 'MAX_VIDEO_DURATION', 'OUTPUT_DIR',
+    'ASR_PROVIDER', 'DASHSCOPE_API_KEY', 'DASHSCOPE_BASE_URL', 'ASR_MODEL', 'LOCAL_ASR_ENGINE', 'WHISPER_MODEL', 'MAX_VIDEO_DURATION', 'OUTPUT_DIR',
     'OSS_ACCESS_KEY_ID', 'OSS_ACCESS_KEY_SECRET', 'OSS_BUCKET_NAME', 'OSS_ENDPOINT'
 ];
 let loadedConfig = null;
@@ -207,7 +212,7 @@ async function loadConfig() {
         for (const field of ['DASHSCOPE_API_KEY', 'OSS_ACCESS_KEY_ID', 'OSS_ACCESS_KEY_SECRET']) {
             document.getElementById(field).value = '';
         }
-        for (const field of ['OSS_BUCKET_NAME', 'OSS_ENDPOINT']) {
+        for (const field of ['OSS_BUCKET_NAME', 'OSS_ENDPOINT', 'DASHSCOPE_BASE_URL']) {
             document.getElementById(field).value = config[field] || '';
         }
         document.getElementById('dashscopeKeyStatus').textContent = config.DASHSCOPE_API_KEY_CONFIGURED ? '已配置' : '尚未配置';
@@ -232,6 +237,7 @@ function configPayload() {
     const payload = {
         ASR_PROVIDER: document.getElementById('ASR_PROVIDER').value,
         DASHSCOPE_API_KEY: document.getElementById('DASHSCOPE_API_KEY').value.trim(),
+        DASHSCOPE_BASE_URL: document.getElementById('DASHSCOPE_BASE_URL').value.trim(),
         ASR_MODEL: document.getElementById('ASR_MODEL').value,
         WHISPER_MODEL: document.getElementById('WHISPER_MODEL').value,
         LOCAL_ASR_ENGINE: document.getElementById('LOCAL_ASR_ENGINE').value,

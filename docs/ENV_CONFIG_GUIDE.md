@@ -14,6 +14,7 @@ cp .env.example .env
 | --- | --- | --- |
 | `ASR_PROVIDER` | `dashscope` | `dashscope` 或 `local` |
 | `DASHSCOPE_API_KEY` | 空 | DashScope API Key |
+| `DASHSCOPE_BASE_URL` | 空 | DashScope API 基础地址；留空使用 SDK 默认值，私有化部署或代理时填写 DashScope 原生 API 路径（如 `https://your-endpoint/api/v1`，不要使用 `compatible-mode` 地址） |
 | `ASR_MODEL` | `paraformer-v2` | 云端模型；当前 Web 配置页面支持 `paraformer-v2` |
 | `LOCAL_ASR_ENGINE` | `whisper` | 本地识别引擎：`whisper` / `sensevoice`；SenseVoice 需安装 `local-chinese` 可选依赖 |
 | `WHISPER_MODEL` | `base` | 本地 Whisper 模型：`tiny` / `base` / `small` / `medium` / `large` / `turbo`；可在 Web 配置页修改 |

@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     """配置优先级：显式参数 > 环境变量 > .env > 默认值。"""
 
     dashscope_api_key: str = Field(default="", repr=False)
+    dashscope_base_url: str = ""  # 留空则使用 SDK 默认地址；私有化部署或代理时填写完整 URL
     asr_provider: Literal["dashscope", "local"] = DEFAULT_ASR_PROVIDER
     asr_model: str = Field(default=DEFAULT_ASR_MODEL, min_length=1)
     local_asr_engine: Literal["whisper", "sensevoice"] = "whisper"
@@ -62,6 +63,26 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator("dashscope_base_url")
+    @classmethod
+    def validate_dashscope_base_url(cls, value: str) -> str:
+        value = (value or "").strip().rstrip("/")
+        if not value:
+            return ""
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username is not None
+            or parsed.password is not None
+            or any(char.isspace() for char in value)
+            or "\\" in value
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("DASHSCOPE_BASE_URL 必须是包含协议和主机的完整 URL")
+        return value
 
     @field_validator("web_public_origin")
     @classmethod

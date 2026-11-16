@@ -69,3 +69,26 @@ def test_invalid_public_origin_rejected(origin):
 def test_public_origin_accepts_external_https_and_strips_trailing_slash():
     settings = Settings(_env_file=None, web_public_origin=" https://tool.example:8443/ ")
     assert settings.web_public_origin == "https://tool.example:8443"
+
+
+def test_dashscope_base_url_defaults_to_sdk_default():
+    assert Settings(_env_file=None, dashscope_api_key="k").dashscope_base_url == ""
+
+
+def test_dashscope_base_url_normalized_and_stripped():
+    settings = Settings(_env_file=None, dashscope_base_url=" https://proxy.example/api/v1/ ")
+    assert settings.dashscope_base_url == "https://proxy.example/api/v1"
+
+
+@pytest.mark.parametrize("base_url", [
+    "proxy.example/api/v1",
+    "ftp://proxy.example/api/v1",
+    "https://user:secret@proxy.example/api/v1",
+    "https://proxy.example/api/v1?x=1",
+    "https://proxy.example/api/v1#frag",
+    "https://proxy. example/api/v1",
+    "https:\\proxy.example\\api\\v1",
+])
+def test_invalid_dashscope_base_url_rejected(base_url):
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, dashscope_base_url=base_url)

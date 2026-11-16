@@ -28,6 +28,7 @@ ENV_FILE = Path(".env")
 CONFIG_FIELDS = {
     "ASR_PROVIDER": "asr_provider",
     "DASHSCOPE_API_KEY": "dashscope_api_key",
+    "DASHSCOPE_BASE_URL": "dashscope_base_url",
     "MAX_VIDEO_DURATION": "max_video_duration",
     "ASR_MODEL": "asr_model",
     "WHISPER_MODEL": "whisper_model",
@@ -91,7 +92,8 @@ def save_env_config(values: dict[str, str]) -> bool:
             for key, value in values.items():
                 set_key(temporary_path, key, value, quote_mode="always", export=False)
 
-            with temporary_path.open("rb") as updated_file:
+            # Windows 无法 fsync 只读句柄，必须用读写模式重新打开。
+            with temporary_path.open("r+b") as updated_file:
                 os.fsync(updated_file.fileno())
             os.replace(temporary_path, ENV_FILE)
             temporary_path = None
@@ -102,6 +104,7 @@ def save_env_config(values: dict[str, str]) -> bool:
                 finally:
                     os.close(directory_fd)
             except OSError:
+                # Windows 不支持对目录 fsync，原子替换已完成，可忽略。
                 pass
         return True
     except (OSError, UnicodeError, ValueError):
@@ -249,6 +252,7 @@ def _configured_fields(settings: Settings) -> dict[str, Any]:
         "ASR_PROVIDER": settings.asr_provider,
         "DASHSCOPE_API_KEY": "",
         "DASHSCOPE_API_KEY_CONFIGURED": bool(settings.dashscope_api_key),
+        "DASHSCOPE_BASE_URL": settings.dashscope_base_url,
         "MAX_VIDEO_DURATION": str(settings.max_video_duration),
         "ASR_MODEL": settings.asr_model,
         "WHISPER_MODEL": settings.whisper_model,
@@ -331,6 +335,7 @@ def _parse_config_update(data: dict[str, Any], current: Settings) -> dict[str, s
     current_values: dict[str, Any] = {
         "ASR_PROVIDER": current.asr_provider,
         "DASHSCOPE_API_KEY": current.dashscope_api_key,
+        "DASHSCOPE_BASE_URL": current.dashscope_base_url,
         "MAX_VIDEO_DURATION": current.max_video_duration,
         "ASR_MODEL": current.asr_model,
         "WHISPER_MODEL": current.whisper_model,

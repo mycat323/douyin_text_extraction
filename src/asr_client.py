@@ -26,6 +26,7 @@ class ASRClient:
         model: str = "paraformer-v2",
         request_timeout: int = 30,
         asr_timeout: int = 600,
+        base_url: str | None = None,
     ):
         if request_timeout <= 0 or asr_timeout <= 0:
             raise ValueError("request_timeout and asr_timeout must be greater than zero")
@@ -39,6 +40,10 @@ class ASRClient:
 
             self.dashscope = dashscope
             self.HTTPStatus = HTTPStatus
+            # 仅在显式指定时覆盖 SDK 的全局地址（私有化部署或代理场景）。
+            if base_url and base_url.strip():
+                self.dashscope.base_http_api_url = base_url.strip().rstrip("/")
+            self.base_http_api_url = self.dashscope.base_http_api_url
         except ImportError as exc:
             console.print("[red]❌ dashscope 库未安装，请运行: uv sync[/red]")
             raise ImportError("Install the cloud ASR dependencies with `uv sync`.") from exc
@@ -52,6 +57,8 @@ class ASRClient:
             return getter(key, default)
         return getattr(value, key, default)
 
+    def _task_url(self, task_id) -> str:
+        return f"{self.base_http_api_url.rstrip('/')}/tasks/{quote(str(task_id), safe='')}"
     def transcribe(
         self,
         audio_path: Optional[Path] = None,
@@ -96,7 +103,7 @@ class ASRClient:
                     return None
                 response_timeout = min(float(self.request_timeout), remaining)
                 # SDK fetch() 固定使用其默认超时；直接查询任务以应用本次剩余期限。
-                task_url = f"{self.dashscope.base_http_api_url.rstrip('/')}/tasks/{quote(str(task_id), safe='')}"
+                task_url = self._task_url(task_id)
                 task_request = request.Request(
                     task_url,
                     headers={"Authorization": f"Bearer {self.api_key}", "Accept": "application/json"},

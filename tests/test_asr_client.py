@@ -184,3 +184,21 @@ def test_fallback_cleans_unique_temp_dir_even_when_oss_is_deleted(tmp_path, monk
     assert client.transcribe_with_fallback("https://video.example/v", "123", config) == "fallback text"
     assert list(tmp_path.iterdir()) == []
     assert oss_clients[0].deleted == ["remote/audio.wav"]
+
+
+def test_custom_base_url_overrides_sdk_default(monkeypatch):
+    transcription = SimpleNamespace(
+        async_call=Mock(return_value=_response(200, SimpleNamespace(task_id="task-1"))),
+    )
+    _install_dashscope(monkeypatch, transcription)
+    monkeypatch.setattr("src.asr_client.request.urlopen", Mock(return_value=io.BytesIO(
+        json.dumps({"output": {"task_status": "FAILED"}}).encode()
+    )))
+    monkeypatch.setattr("src.asr_client.time.sleep", lambda _: None)
+
+    client = ASRClient("k", base_url="https://proxy.example/api/v1/")
+    client.transcribe(video_url="https://cdn.example/video")
+
+    assert client.base_http_api_url == "https://proxy.example/api/v1"
+    assert sys.modules["dashscope"].base_http_api_url == "https://proxy.example/api/v1"
+    assert client._task_url("task-1") == "https://proxy.example/api/v1/tasks/task-1"
